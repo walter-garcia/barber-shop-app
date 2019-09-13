@@ -1,8 +1,9 @@
 import * as Yup from 'yup';
-import { parseISO, startOfHour, isBefore } from 'date-fns';
+import { parseISO, startOfHour, isBefore, format } from 'date-fns';
 import Appointment from '../models/Appointment';
 import User from '../models/User';
 import File from '../models/File';
+import Notification from '../schemas/Notification';
 
 class AppointmentController {
   async index(request, response) {
@@ -56,9 +57,9 @@ class AppointmentController {
         .json({ error: 'You can only create appointments with providers' });
     }
 
-    const minutesToZero = startOfHour(parseISO(date));
+    const hourStart = startOfHour(parseISO(date));
     // check for past dates
-    if (isBefore(minutesToZero, new Date())) {
+    if (isBefore(hourStart, new Date())) {
       return response
         .status(400)
         .json({ error: 'Invalid date! You have entered a date in the past' });
@@ -68,7 +69,7 @@ class AppointmentController {
       where: {
         provider_id,
         canceled_at: null,
-        date: minutesToZero,
+        date: hourStart,
       },
     });
 
@@ -83,6 +84,17 @@ class AppointmentController {
       provider_id,
       date,
     });
+
+    // Notify provider
+    const user = await User.findByPk(request.userId);
+    const formattedDate = format(hourStart, 'MMMM dd');
+    const formattedHour = format(hourStart, 'h:mm aa');
+
+    await Notification.create({
+      content: `You have a new appointment with ${user.name} for ${formattedDate}, at ${formattedHour}`,
+      user: provider_id,
+    });
+
     return response.json(appointment);
   }
 }
