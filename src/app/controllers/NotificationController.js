@@ -21,6 +21,16 @@ class NotificationController {
 
     return response.json(notifications);
   }
+
+  async update(request, response) {
+    const notification = await Notification.findByIdAndUpdate(
+      request.params.id, // pega id da rota
+      { read: true }, // altera no banco read pra true
+      { new: true } // retorna o novo valor
+    );
+
+    return response.json(notification);
+  }
 }
 
 export default new NotificationController();
