@@ -4,6 +4,7 @@ import Appointment from '../models/Appointment';
 import User from '../models/User';
 import File from '../models/File';
 import Notification from '../schemas/Notification';
+import Mail from '../../lib/Mail';
 
 class AppointmentController {
   async index(request, response) {
@@ -97,7 +98,7 @@ class AppointmentController {
     const formattedHour = format(hourStart, 'h:mm aa');
 
     await Notification.create({
-      content: `You have a new appointment with ${user.name} for ${formattedDate}, at ${formattedHour}`,
+      content: `${user.name} scheduled a new appointment for ${formattedDate} at ${formattedHour}`,
       user: provider_id,
     });
 
@@ -105,7 +106,15 @@ class AppointmentController {
   }
 
   async delete(request, response) {
-    const appointment = await Appointment.findByPk(request.params.id);
+    const appointment = await Appointment.findByPk(request.params.id, {
+      include: [
+        {
+          model: User,
+          as: 'provider',
+          attributes: ['name', 'email'],
+        },
+      ],
+    });
 
     if (appointment.user_id !== request.userId) {
       return response.status(401).json({
@@ -124,6 +133,12 @@ class AppointmentController {
     appointment.canceled_at = new Date();
 
     await appointment.save();
+
+    await Mail.sendMail({
+      to: `${appointment.provider.name} <${appointment.provider.email}>`,
+      subject: 'Appointment canceled',
+      text: 'This appointment was canceled by user',
+    });
 
     return response.json(appointment);
   }
