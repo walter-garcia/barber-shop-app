@@ -1,1 +1,1 @@
-# barber-shop-app
+# Barber Shop App
